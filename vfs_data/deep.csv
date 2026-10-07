@@ -1,0 +1,13 @@
+path,type,content,owner,permissions
+/,dir,,root,755
+/home,dir,,root,755
+/home/student,dir,,student,755
+/home/student/projects,dir,,student,755
+/home/student/projects/shell,dir,,student,755
+/home/student/projects/shell/src,dir,,student,755
+/home/student/projects/shell/src/main.py,file,print("hello"),student,644
+/home/student/projects/shell/README.md,file,# Shell Emulator,student,644
+/home/student/notes.txt,file,My notes,student,644
+/var,dir,,root,755
+/var/log,dir,,root,755
+/var/log/syslog,file,boot ok,root,644

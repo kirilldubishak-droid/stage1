@@ -1,4 +1,4 @@
-"""Эмулятор оболочки. Вариант 7, этап 2."""
+"""Эмулятор оболочки. Вариант 7, этап 3 (VFS)."""
 
 import argparse
 import os
@@ -14,6 +14,8 @@ except ImportError:
         import tomli as tomllib
     except ImportError:
         tomllib = None
+
+from vfs import VFS
 
 
 def expand_vars(text):
@@ -46,7 +48,7 @@ def parse_line(line):
 
 
 def load_toml(path):
-    """Читает TOML. Ошибка — сообщение."""
+    """Читает TOML-конфиг."""
     if not path:
         return {}
     if not os.path.exists(path):
@@ -68,7 +70,7 @@ def load_toml(path):
 def parse_args():
     """CLI-параметры."""
     p = argparse.ArgumentParser()
-    p.add_argument("--vfs", "-v", help="Путь к VFS")
+    p.add_argument("--vfs", "-v", help="Путь к CSV VFS")
     p.add_argument("--prompt", "-p", help="Приглашение")
     p.add_argument("--script", "-s", help="Скрипт")
     p.add_argument("--config", "-c", help="TOML")
@@ -76,28 +78,47 @@ def parse_args():
 
 
 class ShellEmulator:
-    """GUI с конфигом (этап 2)."""
+    """GUI + VFS в памяти (этап 3)."""
 
     def __init__(self, vfs_path=None, prompt="$ ",
                  start_script=None):
         self.prompt = prompt or "$ "
         self.start_script = start_script
-        self.vfs_name = "VFS"
-        if vfs_path:
-            self.vfs_name = os.path.basename(vfs_path)
-            print(f"[DEBUG] vfs path = {vfs_path}")
+        self.vfs = VFS()
+        self._load_vfs(vfs_path)
+        self._build_ui()
+        self.write(
+            f"Этап 3. VFS: {self.vfs.name}\n"
+            f"Команды: ls, cd, exit (пока заглушки)\n\n"
+        )
+        if self.start_script:
+            self.run_script(self.start_script)
 
+    def _load_vfs(self, vfs_path):
+        """Загрузка VFS из CSV."""
+        if not vfs_path:
+            return
+        try:
+            self.vfs.load_from_csv(vfs_path)
+            print(f"[DEBUG] VFS загружен: {vfs_path}")
+        except FileNotFoundError:
+            print(f"[ERROR] VFS не найден: {vfs_path}")
+        except ValueError as e:
+            print(f"[ERROR] Неверный формат VFS: {e}")
+        except Exception as e:
+            print(f"[ERROR] Ошибка VFS: {e}")
+
+    def _build_ui(self):
+        """Окно и поле ввода."""
         self.root = tk.Tk()
-        self.root.title(f"Эмулятор - {self.vfs_name}")
+        self.root.title(f"Эмулятор - {self.vfs.name}")
         self.root.geometry("600x400")
-
         self.output = scrolledtext.ScrolledText(
             self.root, state="disabled", height=20
         )
         self.output.pack(
             fill=tk.BOTH, expand=True, padx=5, pady=5
         )
-
         frame = tk.Frame(self.root)
         frame.pack(fill=tk.X, padx=5, pady=5)
         tk.Label(frame, text=self.prompt).pack(side=tk.LEFT)
@@ -105,13 +126,6 @@ class ShellEmulator:
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.entry.bind("<Return>", self.on_enter)
         self.entry.focus()
-
-        self.write(
-            f"Этап 2. VFS: {self.vfs_name}\n"
-            f"Команды: ls, cd, exit\n\n"
-        )
-        if self.start_script:
-            self.run_script(self.start_script)
 
     def write(self, text):
         self.output.config(state="normal")
@@ -144,7 +158,7 @@ class ShellEmulator:
             self.write(f"Ошибка: нет команды '{cmd}'\n")
 
     def run_script(self, path):
-        """Скрипт с # комментариями."""
+        """Стартовый скрипт с #."""
         if not os.path.exists(path):
             self.write(f"[ERROR] Нет скрипта: {path}\n")
             return
@@ -179,16 +193,13 @@ def main():
     print(f"  --script = {args.script}")
     print(f"  --config = {args.config}")
     print("==========================")
-
     cfg = load_toml(args.config)
-    # файл приоритетнее CLI
     vfs_path = cfg.get("vfs_path") or args.vfs
     prompt = cfg.get("prompt") or args.prompt or "$ "
     script = cfg.get("start_script") or args.script
     print(f"[DEBUG] Итого vfs={vfs_path}")
     print(f"[DEBUG] Итого prompt={prompt!r}")
     print(f"[DEBUG] Итого script={script}")
-
     ShellEmulator(
         vfs_path=vfs_path, prompt=prompt,
         start_script=script,
@@ -196,4 +207,7 @@ def main():
 
 
 if __name__ == "__main__":
+    sys.path.insert(
+        0, os.path.dirname(os.path.abspath(__file__))
+    )
     main()

@@ -1,30 +1,19 @@
-# Эмулятор оболочки — Вариант 7, Этап 2
+# Эмулятор оболочки — Вариант 7, Этап 3
 
 ## Что сделано
 
-- Параметры CLI: `--vfs`, `--prompt`, `--script`, `--config`
-- Конфиг TOML (файл имеет приоритет над CLI)
-- Отладочный вывод параметров при запуске
-- Стартовый скрипт с комментариями `#`
-- Ошибки чтения конфига и скрипта
-- Заглушки `ls`, `cd`, команда `exit`
+- Всё из этапа 2 (CLI + TOML + скрипт)
+- VFS из CSV **в памяти**
+- Файлы: minimal, medium, deep (≥3 уровня)
+- Ошибки: файл не найден, неверный формат
+- Заголовок окна = имя VFS
+- ls/cd пока заглушки (логика — этап 4)
 
 ## Запуск
 
 ```
-python src\emulator.py --prompt "test$ "
+python src\emulator.py --vfs vfs_data\minimal.csv
+python src\emulator.py --vfs vfs_data\deep.csv
 python src\emulator.py --config configs\config.toml
-python src\emulator.py --script scripts\test_stage2.sh
-scripts\run_cli_config.bat
-```
-
-## Примеры
-
-```
-$ ls
-ls: аргументы = []
-$ cd /tmp
-cd: аргументы = ['/tmp']
-$ foobar
-Ошибка: нет команды 'foobar'
+python tests\test_vfs.py
 ```

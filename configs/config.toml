@@ -1,6 +1,3 @@
-# Конфиг эмулятора (TOML)
-# Значения из файла имеют приоритет над CLI
-
-vfs_path = "vfs_data/placeholder.csv"
+vfs_path = "vfs_data/medium.csv"
 prompt = "student@vfs:$ "
-start_script = "scripts/test_stage2.sh"
+start_script = "scripts/test_stage3.sh"

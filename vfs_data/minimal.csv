@@ -1,0 +1,3 @@
+path,type,content,owner,permissions
+/,dir,,root,755
+/readme.txt,file,Hello from minimal VFS,user,644

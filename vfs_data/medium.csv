@@ -1,0 +1,10 @@
+path,type,content,owner,permissions
+/,dir,,root,755
+/home,dir,,root,755
+/home/user,dir,,user,755
+/home/user/docs,dir,,user,755
+/home/user/docs/note.txt,file,Note in docs,user,644
+/home/user/hello.txt,file,Hello world,user,644
+/etc,dir,,root,755
+/etc/passwd,file,root:x:0:0,root,644
+/bin,dir,,root,755
