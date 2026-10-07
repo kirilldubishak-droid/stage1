@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python src\emulator.py
+python src\emulator.py %*
