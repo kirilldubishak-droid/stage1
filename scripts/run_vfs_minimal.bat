@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0\.."
-python src\emulator.py --vfs vfs_data\minimal.csv --prompt "min$ "
+python src\emulator.py --vfs vfs_data\minimal.csv

@@ -1,4 +1,4 @@
-"""Эмулятор оболочки. Вариант 7, этап 3 (VFS)."""
+"""Эмулятор оболочки. Вариант 7"""
 
 import argparse
 import os
@@ -37,7 +37,7 @@ def expand_vars(text):
 
 
 def parse_line(line):
-    """Команда + аргументы."""
+    """Команда + аргументы, с раскрытием переменных."""
     if "#" in line:
         line = line[: line.index("#")]
     line = expand_vars(line.strip())
@@ -48,37 +48,39 @@ def parse_line(line):
 
 
 def load_toml(path):
-    """Читает TOML-конфиг."""
+    """Читает TOML-конфиг. Файл имеет приоритет."""
     if not path:
         return {}
     if not os.path.exists(path):
         print(f"[ERROR] Конфиг не найден: {path}")
         return {}
     if tomllib is None:
-        print("[ERROR] pip install tomli")
+        print("[ERROR] Нужен tomllib или pip install tomli")
         return {}
     try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
-        print(f"[DEBUG] Конфиг: {path}")
+        print(f"[DEBUG] Конфиг загружен: {path}")
         return data
     except Exception as e:
-        print(f"[ERROR] Конфиг: {e}")
+        print(f"[ERROR] Ошибка чтения конфига: {e}")
         return {}
 
 
 def parse_args():
-    """CLI-параметры."""
-    p = argparse.ArgumentParser()
+    """Параметры командной строки."""
+    p = argparse.ArgumentParser(
+        description="Эмулятор оболочки (вариант 7)"
+    )
     p.add_argument("--vfs", "-v", help="Путь к CSV VFS")
-    p.add_argument("--prompt", "-p", help="Приглашение")
-    p.add_argument("--script", "-s", help="Скрипт")
-    p.add_argument("--config", "-c", help="TOML")
+    p.add_argument("--prompt", "-p", help="Приглашение REPL")
+    p.add_argument("--script", "-s", help="Стартовый скрипт")
+    p.add_argument("--config", "-c", help="Путь к TOML")
     return p.parse_args()
 
 
 class ShellEmulator:
-    """GUI + VFS в памяти (этап 3)."""
+    """GUI-эмулятор оболочки с VFS."""
 
     def __init__(self, vfs_path=None, prompt="$ ",
                  start_script=None):
@@ -88,8 +90,9 @@ class ShellEmulator:
         self._load_vfs(vfs_path)
         self._build_ui()
         self.write(
-            f"Этап 3. VFS: {self.vfs.name}\n"
-            f"Команды: ls, cd, exit (пока заглушки)\n\n"
+            f"Эмулятор (вариант 7)\n"
+            f"VFS: {self.vfs.name}\n"
+            f"Команды: ls, cd, pwd, wc, find, exit\n\n"
         )
         if self.start_script:
             self.run_script(self.start_script)
@@ -106,13 +109,14 @@ class ShellEmulator:
         except ValueError as e:
             print(f"[ERROR] Неверный формат VFS: {e}")
         except Exception as e:
-            print(f"[ERROR] Ошибка VFS: {e}")
+            print(f"[ERROR] Ошибка загрузки VFS: {e}")
 
     def _build_ui(self):
-        """Окно и поле ввода."""
+        """Создание окна и поля ввода."""
         self.root = tk.Tk()
-        self.root.title(f"Эмулятор - {self.vfs.name}")
-        self.root.geometry("600x400")
+        title = f"Эмулятор - {self.vfs.name}"
+        self.root.title(title)
+        self.root.geometry("700x450")
         self.output = scrolledtext.ScrolledText(
             self.root, state="disabled", height=20
         )
@@ -121,19 +125,26 @@ class ShellEmulator:
         )
         frame = tk.Frame(self.root)
         frame.pack(fill=tk.X, padx=5, pady=5)
-        tk.Label(frame, text=self.prompt).pack(side=tk.LEFT)
+        self.prompt_label = tk.Label(
+            frame, text=self.prompt
+        )
+        self.prompt_label.pack(side=tk.LEFT)
         self.entry = tk.Entry(frame)
-        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.entry.pack(
+            side=tk.LEFT, fill=tk.X, expand=True
+        )
         self.entry.bind("<Return>", self.on_enter)
         self.entry.focus()
 
     def write(self, text):
+        """Вывод в окно."""
         self.output.config(state="normal")
         self.output.insert(tk.END, text)
         self.output.see(tk.END)
         self.output.config(state="disabled")
 
     def on_enter(self, event=None):
+        """Обработка Enter."""
         line = self.entry.get()
         self.entry.delete(0, tk.END)
         if not line.strip():
@@ -145,30 +156,108 @@ class ShellEmulator:
         self.run_cmd(cmd, args)
 
     def run_cmd(self, cmd, args):
-        if cmd == "exit":
-            self.root.destroy()
-        elif cmd == "ls":
-            self.write(f"ls: аргументы = {args}\n")
-        elif cmd == "cd":
-            if not args:
-                self.write("cd: не указан путь\n")
+        """Выполнение одной команды."""
+        try:
+            if cmd == "exit":
+                self.root.destroy()
+            elif cmd == "ls":
+                self.cmd_ls(args)
+            elif cmd == "cd":
+                self.cmd_cd(args)
+            elif cmd == "pwd":
+                self.write(self.vfs.current_path + "\n")
+            elif cmd == "wc":
+                self.cmd_wc(args)
+            elif cmd == "find":
+                self.cmd_find(args)
             else:
-                self.write(f"cd: аргументы = {args}\n")
-        else:
-            self.write(f"Ошибка: нет команды '{cmd}'\n")
+                self.write(
+                    f"Ошибка: нет команды '{cmd}'\n"
+                )
+        except Exception as e:
+            self.write(f"Ошибка: {e}\n")
+
+    def cmd_ls(self, args):
+        """Список файлов в директории."""
+        path = args[0] if args else "."
+        try:
+            items = self.vfs.list_dir(path)
+            if not items:
+                self.write("(пусто)\n")
+                return
+            base = self.vfs.resolve_path(path)
+            for name in items:
+                if base == "/":
+                    full = "/" + name
+                else:
+                    full = base.rstrip("/") + "/" + name
+                node = self.vfs.get_node(full)
+                mark = "d" if node and node.is_dir else "-"
+                self.write(f"{mark}  {name}\n")
+        except Exception as e:
+            self.write(f"ls: {e}\n")
+
+    def cmd_cd(self, args):
+        """Смена текущей директории."""
+        path = args[0] if args else "/"
+        try:
+            self.vfs.change_dir(path)
+            self.write(
+                f"Путь: {self.vfs.current_path}\n"
+            )
+        except Exception as e:
+            self.write(f"cd: {e}\n")
+
+    def cmd_wc(self, args):
+        """Подсчёт строк, слов, байт."""
+        if not args:
+            self.write("wc: нужен файл\n")
+            return
+        try:
+            lines, words, nbytes = self.vfs.wc(args[0])
+            self.write(
+                f"  {lines}  {words}  {nbytes}"
+                f"  {args[0]}\n"
+            )
+        except Exception as e:
+            self.write(f"wc: {e}\n")
+
+    def cmd_find(self, args):
+        """Поиск по имени: find [path] -name name."""
+        start = "."
+        name = None
+        i = 0
+        while i < len(args):
+            if args[i] == "-name" and i + 1 < len(args):
+                name = args[i + 1]
+                i += 2
+            else:
+                start = args[i]
+                i += 1
+        try:
+            results = self.vfs.find(start, name)
+            if not results:
+                self.write("(не найдено)\n")
+            for r in results:
+                self.write(r + "\n")
+        except Exception as e:
+            self.write(f"find: {e}\n")
 
     def run_script(self, path):
-        """Стартовый скрипт с #."""
+        """Стартовый скрипт с комментариями #."""
         if not os.path.exists(path):
-            self.write(f"[ERROR] Нет скрипта: {path}\n")
+            self.write(
+                f"[ERROR] Скрипт не найден: {path}\n"
+            )
             return
         self.write(f"=== Скрипт: {path} ===\n")
         try:
             with open(path, encoding="utf-8") as f:
                 for num, raw in enumerate(f, 1):
                     line = raw.rstrip("\n")
-                    s = line.strip()
-                    if not s or s.startswith("#"):
+                    stripped = line.strip()
+                    if (not stripped
+                            or stripped.startswith("#")):
                         continue
                     self.write(f"{self.prompt}{line}\n")
                     try:
@@ -176,34 +265,45 @@ class ShellEmulator:
                         if cmd:
                             self.run_cmd(cmd, args)
                     except Exception as e:
-                        self.write(f"[скрипт:{num}] {e}\n")
+                        self.write(
+                            f"[скрипт:{num}] {e}\n"
+                        )
         except Exception as e:
             self.write(f"[ERROR] Скрипт: {e}\n")
         self.write("=== Конец скрипта ===\n\n")
 
     def run(self):
+        """Главный цикл GUI."""
         self.root.mainloop()
 
 
 def main():
+    """Точка входа: CLI + TOML, файл приоритетнее."""
     args = parse_args()
+
     print("=== Параметры запуска ===")
     print(f"  --vfs    = {args.vfs}")
     print(f"  --prompt = {args.prompt}")
     print(f"  --script = {args.script}")
     print(f"  --config = {args.config}")
     print("==========================")
+
     cfg = load_toml(args.config)
+
     vfs_path = cfg.get("vfs_path") or args.vfs
     prompt = cfg.get("prompt") or args.prompt or "$ "
     script = cfg.get("start_script") or args.script
-    print(f"[DEBUG] Итого vfs={vfs_path}")
-    print(f"[DEBUG] Итого prompt={prompt!r}")
-    print(f"[DEBUG] Итого script={script}")
-    ShellEmulator(
-        vfs_path=vfs_path, prompt=prompt,
+
+    print(f"[DEBUG] Итого: vfs={vfs_path}")
+    print(f"[DEBUG] Итого: prompt={prompt!r}")
+    print(f"[DEBUG] Итого: script={script}")
+
+    app = ShellEmulator(
+        vfs_path=vfs_path,
+        prompt=prompt,
         start_script=script,
-    ).run()
+    )
+    app.run()
 
 
 if __name__ == "__main__":
