@@ -196,3 +196,42 @@ class VFS:
         start_abs = self.resolve_path(start_path)
         walk(start_node, start_abs)
         return results
+
+    def mkdir(self, path):
+        """Создать директорию (только в памяти)."""
+        abs_path = self.resolve_path(path)
+        if abs_path == "/":
+            raise FileExistsError("/")
+        if self.get_node(abs_path) is not None:
+            raise FileExistsError(abs_path)
+        parent = abs_path.rsplit("/", 1)[0] or "/"
+        parent_node = self.get_node(parent)
+        if parent_node is None:
+            raise FileNotFoundError(parent)
+        if not parent_node.is_dir:
+            raise NotADirectoryError(parent)
+        name = abs_path.rstrip("/").split("/")[-1]
+        parent_node.children[name] = VFSNode(
+            name, is_dir=True, permissions="755"
+        )
+
+    def remove(self, path):
+        """Удалить файл или пустую директорию."""
+        abs_path = self.resolve_path(path)
+        if abs_path == "/":
+            raise PermissionError("нельзя удалить /")
+        node = self.get_node(abs_path)
+        if node is None:
+            raise FileNotFoundError(abs_path)
+        if node.is_dir and node.children:
+            raise OSError("директория не пуста: " + abs_path)
+        parent = abs_path.rsplit("/", 1)[0] or "/"
+        parent_node = self.get_node(parent)
+        name = abs_path.rstrip("/").split("/")[-1]
+        del parent_node.children[name]
+        # если удалили текущую — уйти в parent
+        cur = self.current_path
+        if cur == abs_path or cur.startswith(
+            abs_path.rstrip("/") + "/"
+        ):
+            self.current_path = parent if parent else "/"

@@ -92,7 +92,7 @@ class ShellEmulator:
         self.write(
             f"Эмулятор (вариант 7)\n"
             f"VFS: {self.vfs.name}\n"
-            f"Команды: ls, cd, pwd, wc, find, exit\n\n"
+            f"Команды: ls, cd, pwd, wc, find, mkdir, rm, exit\n\n"
         )
         if self.start_script:
             self.run_script(self.start_script)
@@ -170,6 +170,10 @@ class ShellEmulator:
                 self.cmd_wc(args)
             elif cmd == "find":
                 self.cmd_find(args)
+            elif cmd == "mkdir":
+                self.cmd_mkdir(args)
+            elif cmd == "rm":
+                self.cmd_rm(args)
             else:
                 self.write(
                     f"Ошибка: нет команды '{cmd}'\n"
@@ -242,6 +246,28 @@ class ShellEmulator:
                 self.write(r + "\n")
         except Exception as e:
             self.write(f"find: {e}\n")
+
+    def cmd_mkdir(self, args):
+        """Создать директорию в VFS."""
+        if not args:
+            self.write("mkdir: нужен путь\n")
+            return
+        try:
+            self.vfs.mkdir(args[0])
+            self.write(f"создано: {args[0]}\n")
+        except Exception as e:
+            self.write(f"mkdir: {e}\n")
+
+    def cmd_rm(self, args):
+        """Удалить файл или пустую папку."""
+        if not args:
+            self.write("rm: нужен путь\n")
+            return
+        try:
+            self.vfs.remove(args[0])
+            self.write(f"удалено: {args[0]}\n")
+        except Exception as e:
+            self.write(f"rm: {e}\n")
 
     def run_script(self, path):
         """Стартовый скрипт с комментариями #."""

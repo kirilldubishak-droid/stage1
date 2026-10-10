@@ -42,9 +42,19 @@ def test_find():
     assert any("main.py" in x for x in r)
 
 
+def test_mkdir_rm():
+    v = VFS()
+    v.load_from_csv(os.path.join(ROOT, "minimal.csv"))
+    v.mkdir("/newdir")
+    assert "newdir" in v.list_dir("/")
+    v.remove("/newdir")
+    assert "newdir" not in v.list_dir("/")
+
+
 if __name__ == "__main__":
     test_minimal()
     test_cd()
     test_wc()
     test_find()
+    test_mkdir_rm()
     print("OK vfs")
